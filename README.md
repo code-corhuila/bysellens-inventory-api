@@ -23,3 +23,14 @@ branch into another: `merge develop -> qa` and `merge qa -> main` do not exist i
 rule.
 
 Full policy: `00-governance/branching-policy.md` in `library-docs`.
+
+## Run locally
+
+1. Copy `.env.example` to `.env` and set strong local PostgreSQL and RabbitMQ credentials.
+2. Set `JWT_PUBLIC_KEY_BASE64` to the Base64-encoded DER/X.509 RSA public key from Auth. Never put the private key in this repository.
+3. Run `docker compose up --build -d` from the repository root.
+4. Check `http://localhost:8080/api/v1/health` and `http://localhost:8080/swagger-ui/index.html`.
+
+Run the unit and security tests with `mvn test`. The PostgreSQL integration tests use Testcontainers and require a working Docker daemon; they are skipped when Docker is unavailable.
+
+Product creation writes `ProductCreated` to the PostgreSQL outbox in the same transaction. The RabbitMQ publisher is disabled by default. Enable `INVENTORY_EVENTS_PUBLISHER_ENABLED` only after configuring `INVENTORY_EVENTS_EXCHANGE` to the team-approved exchange. Exchange, queue/binding, retry/DLQ policy and broker integration verification remain pending; successful API responses do not prove event delivery.
