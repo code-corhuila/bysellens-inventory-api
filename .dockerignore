@@ -1,0 +1,7 @@
+**/target
+.m2
+.git
+.env
+**/node_modules
+**/*.log
+tests/*result.json

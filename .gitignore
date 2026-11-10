@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+secrets/
+.m2/
+**/target/
+uploads/
+*.log
