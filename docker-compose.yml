@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "127.0.0.1:5433:5432"
+    environment:
+      POSTGRES_DB: inventory_db
+      POSTGRES_USER: inventory_owner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD}
+      DB_PASSWORD: ${DB_PASSWORD:?Configure DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init.sh:/docker-entrypoint-initdb.d/10-init.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U inventory_owner -d inventory_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Configure RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Configure RABBITMQ_PASSWORD}
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  inventory-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/inventory_db
+      DB_USER: inventory_app
+      DB_PASSWORD: ${DB_PASSWORD:?Configure DB_PASSWORD}
+      JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64:?Configure JWT_PUBLIC_KEY_BASE64}
+      JWT_ISSUER: ${JWT_ISSUER:-bysellens-auth}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-bysellens-api}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:?Configure RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Configure RABBITMQ_PASSWORD}
+      INVENTORY_EVENTS_EXCHANGE: ${INVENTORY_EVENTS_EXCHANGE:-}
+      INVENTORY_EVENTS_PUBLISHER_ENABLED: ${INVENTORY_EVENTS_PUBLISHER_ENABLED:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+volumes:
+  pgdata:
